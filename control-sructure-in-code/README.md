@@ -93,9 +93,6 @@ variable "each_vm" {
 
 ![](img/img9.png)
 
-
-
-
 ------
 
 ### Задание 4
