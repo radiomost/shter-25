@@ -1,33 +1,43 @@
 locals {
-  #NOTE Группа Web-серверов (из count-vm.tf)
+  # ---------------------------------------------------------------------------
+  # Группа Web-серверов (выбираем nat_ip или внутренний ip)
+  # ---------------------------------------------------------------------------
   webservers = [
     for vm in yandex_compute_instance.web : {
       name       = vm.name
-      ansible_host = vm.network_interface[0].nat_ip_address
+      # Если nat_ip есть - используем его, иначе внутренний IP
+      ansible_host = length(vm.network_interface[0].nat_ip_address) > 0 ? vm.network_interface[0].nat_ip_address : vm.network_interface[0].ip_address
       fqdn       = vm.fqdn
     }
   ]
 
-  #NOTE Группа Баз данных (из for_each-vm.tf)
+  # ---------------------------------------------------------------------------
+  # Группа Баз данных
+  # ---------------------------------------------------------------------------
   databases = [
     for vm in yandex_compute_instance.db : {
       name       = vm.name
-      ansible_host = vm.network_interface[0].nat_ip_address
+      ansible_host = length(vm.network_interface[0].nat_ip_address) > 0 ? vm.network_interface[0].nat_ip_address : vm.network_interface[0].ip_address
       fqdn       = vm.fqdn
     }
   ]
 
-  #NOTE Группа Storage (из disk_vm.tf) - оборачиваем в список для единообразия
+  # ---------------------------------------------------------------------------
+  # Группа Storage
+  # ---------------------------------------------------------------------------
   storage = [
     {
       name       = yandex_compute_instance.storage.name
-      ansible_host = yandex_compute_instance.storage.network_interface[0].nat_ip_address
+      ansible_host = length(yandex_compute_instance.storage.network_interface[0].nat_ip_address) > 0 ? yandex_compute_instance.storage.network_interface[0].nat_ip_address : yandex_compute_instance.storage.network_interface[0].ip_address
       fqdn       = yandex_compute_instance.storage.fqdn
     }
   ]
 }
 
-#NOTE Генерация Ansible inventory файла через templatefile
+# =============================================================================
+# Генерация Ansible inventory файла
+# =============================================================================
+
 resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/hosts.tftpl", {
     webservers = local.webservers
@@ -38,23 +48,28 @@ resource "local_file" "ansible_inventory" {
   filename = "${path.module}/hosts.ini"
 }
 
-#NOTE Output для проверки (опционально)
-output "inventory_file_path" {
-  value = "${path.module}/inventory/hosts.ini"
+# =============================================================================
+# Запуск ansible-playbook через null_resource
+# =============================================================================
+
+resource "null_resource" "ansible_configure" {
+  triggers = {
+    inventory_hash = sha256(local_file.ansible_inventory.content)
+  }
+
+  depends_on = [
+    yandex_compute_instance.web,
+    yandex_compute_instance.db,
+    yandex_compute_instance.storage,
+    local_file.ansible_inventory
+  ]
+
+  provisioner "local-exec" {
+    command = "ansible-playbook -i ${path.module}/hosts.ini ${path.module}/test.yml"
+    
+    # Опционально: указать переменные
+    # environment = {
+    #   ANSIBLE_HOST_KEY_CHECKING = "False"
+    # }
+  }
 }
-
-
-# resource "null_resource" "ansible_inventory" {
-#   triggers = {
-#     # Пересоздавать файл при изменении состава ВМ
-#     inventory_hash = sha256(join("", concat(
-#       [for vm in local.webservers : vm.fqdn],
-#       [for vm in local.databases : vm.fqdn],
-#       [for vm in local.storage : vm.fqdn]
-#     )))
-#   }
-
-#   provisioner "local-exec" {
-#     command = "cat > ${path.module}/hosts.ini <<EOF\n${templatefile("${path.module}/hosts.tftpl", { webservers = local.webservers, databases = local.databases, storage = local.storage })}\nEOF"
-#   }
-# }
