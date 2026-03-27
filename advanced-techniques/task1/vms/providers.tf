@@ -8,9 +8,9 @@ terraform {
       source  = "hashicorp/local"
       version = "2.7.0"
     }
-    yandex_old = {
-      source  = "hashicorp/yandex"
-      version = "0.0.0"
+    template = {
+      source  = "hashicorp/template"
+      version = "2.2.0"
     }
   }
 }

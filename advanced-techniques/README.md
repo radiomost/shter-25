@@ -28,7 +28,21 @@
 4. Предоставьте скриншот подключения к консоли и вывод команды ```sudo nginx -t```, скриншот консоли ВМ yandex cloud с их метками. Откройте terraform console и предоставьте скриншот содержимого модуля. Пример: > module.marketing_vm
 ------
 В случае использования MacOS вы получите ошибку "Incompatible provider version" . В этом случае скачайте remote модуль локально и поправьте в нем версию template провайдера на более старую.
+
+### Решение
+
+![](img/img1.png)
+
+Вывод консоли
+
+![](img/img2.png)
+
+![](img/img3.png)
+
 ------
+
+
+
 
 ### Задание 2
 
@@ -48,6 +62,15 @@ module "vpc_dev" {
   cidr = "10.0.1.0/24"
 }
 ```
+
+### Решение
+advanced-techniques/task2/vpc/README.md
+
+[**Документация**](advanced-techniques/task2/vpc/README.md)
+![](img/img4.png)
+
+
+
 
 ### Задание 3
 1. Выведите список ресурсов в стейте.
